@@ -1,12 +1,11 @@
 //jshint esversion:6
-require('dotenv').config()
 const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const port = 3000;
 const mongoose=require("mongoose"); 
 const encrypt=require("mongoose-encryption");
-
+const md5=require("md5");
 
 const app = express();
 
@@ -27,8 +26,8 @@ const modelSchema=new mongoose.Schema({
     pwd:String
 });
 
-const secret=process.env.SECRET;
-modelSchema.plugin(encrypt,{secret:secret,encryptedFields:['pwd']});
+// const secret=process.env.SECRET;
+// modelSchema.plugin(encrypt,{secret:secret,encryptedFields:['pwd']});
 
 const User=mongoose.model("user",modelSchema);
 
@@ -55,7 +54,7 @@ app.get("/logout",function(req,res){
 })
 app.post("/register",function(req,res){
     let user=req.body.username;
-    let pwd=req.body.password;
+    let pwd=md5(req.body.password);
     let obj=new User({
         name:user,
         pwd:pwd
@@ -91,7 +90,7 @@ app.post("/register",function(req,res){
 
 app.post("/login",function(req,res){
     const user=req.body.username;
-    const pwd=req.body.password;
+    const pwd=md5(req.body.password);
     let obj2={
         name:user,
         pwd:pwd
