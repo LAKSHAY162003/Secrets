@@ -5,7 +5,11 @@ const ejs = require('ejs');
 const port = 3000;
 const mongoose=require("mongoose"); 
 const encrypt=require("mongoose-encryption");
-const md5=require("md5");
+// const md5=require("md5");
+const bcrypt=require("bcrypt");
+
+
+const saltRounds = 10;
 
 const app = express();
 
@@ -53,13 +57,18 @@ app.get("/logout",function(req,res){
     res.redirect("/");
 })
 app.post("/register",function(req,res){
+    
     let user=req.body.username;
-    let pwd=md5(req.body.password);
-    let obj=new User({
-        name:user,
-        pwd:pwd
-    });
-    //see :user ki email unique enough hogi !!!
+    let pwd=req.body.password;
+    
+    bcrypt.hash(pwd, saltRounds, function(err1, hash) {
+        
+        let obj=new User({
+            name:user,
+            pwd:hash
+        });
+
+        //see :user ki email unique enough hogi !!!
     User.find({name:user},function(err,result){
         if(err){
             console.log("Unsuccess !! "+err);
@@ -76,21 +85,27 @@ app.post("/register",function(req,res){
                 });
             }
             else{
-                if(result[0].pwd!=pwd){
-                    res.redirect("/");
-                }
-                else{
-                    res.redirect("/login");
-                }
+                bcrypt.compare(pwd,result[0].pwd, function(err, result) {
+                    if(result==true){
+                        res.redirect("/login");
+                    }
+                    else{
+                        res.redirect("/");
+                    }
+                });
             }
         }
     })
+    });
+
+    
+    
     
 });
 
 app.post("/login",function(req,res){
     const user=req.body.username;
-    const pwd=md5(req.body.password);
+    const pwd=(req.body.password);
     let obj2={
         name:user,
         pwd:pwd
@@ -106,13 +121,15 @@ app.post("/login",function(req,res){
                 res.redirect("/");
             }
             else{   
-                    if(pwd!=result[0].pwd){
-                        console.log("Incorrect pwd ");
-                        res.render("/");
-                    }
-                    else{
+                bcrypt.compare(pwd,result[0].pwd, function(err, result) {
+                    if(result==true){
                         res.render("secrets");
                     }
+                    else{
+                        console.log("Incorrect pwd ");
+                        res.redirect("/");
+                    }
+                });
             }
         }
     })
