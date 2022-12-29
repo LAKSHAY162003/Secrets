@@ -1,4 +1,5 @@
 //jshint esversion:6
+require("dotenv").config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
@@ -10,6 +11,9 @@ const session = require('express-session');
 const passportLocalMongoose = require('passport-local-mongoose');
 const app = express();
 const LocalStatergy=require("passport-local")
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const findOrCreate = require("mongoose-findorcreate");
+
 
 // to set up a session !!
 // so each time : browser sends a request to the server : 
@@ -44,11 +48,20 @@ mongoose.connect(mongodb,(err)=>{
 
 const modelSchema=new mongoose.Schema({
     name:String,
-    pwd:String
+    pwd:String,
+    googleId:String
 });
+
+//this GoogleId field dalne ka motive simple !!
+// apka : jabhi bhi wo same user : login kare to database 
+// me use naya user na samjh le !!
+// and uske naam ki ek aur document na bana de !!!
+
 modelSchema.plugin(passportLocalMongoose, {
     usernameField: 'name'
   });
+
+  modelSchema.plugin(findOrCreate);
 const User = mongoose.model('User', modelSchema );
 
 
@@ -60,6 +73,19 @@ const User = mongoose.model('User', modelSchema );
 // plugins install kar diye hai is schema ke saaath to jo bhi models is schema 
 // based honge : those can use the extra methods / Powers provided by this plugin !!
 passport.use(new LocalStatergy(User.authenticate()));
+
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+
 
 // WHAT IS LOCAL STATERGY ?? : IT IS THE WAY TO AUTHENTICATE THE USER 
 // AND USING THE PASSPORT-LOCAL-MONGOOSE-PLUGIN
@@ -153,6 +179,15 @@ app.post("/register",function(req,res){
 app.get("/login",function(req,res){
     res.render("login");
 })
+
+app.get('/auth/google',
+  passport.authenticate('google', { scope: [ 'email', 'profile' ]
+}));
+app.get('/auth/google/secrets', passport.authenticate( 'google', {
+   successRedirect: '/secrets',
+   failureRedirect: '/'
+}));
+
 
 // This callback fnc will be triggered only and only if 
 // the : authentication is passed !!
