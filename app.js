@@ -52,6 +52,25 @@ const modelSchema=new mongoose.Schema({
     googleId:String
 });
 
+const secretsSchema=new mongoose.Schema({
+    content:String,
+    user:modelSchema
+})
+
+const Secret=mongoose.model("secret",secretsSchema);
+
+// Secret.insertMany([{content:"This is my 1st Secret :)",user:{
+//     name:"try123@gmail.com",
+//     pwd:"try123"
+// }}],function(err){
+//     if(err){
+//         console.log("Error !!");
+//     }
+//     else{
+//         console.log("Success !!");
+//     }
+// })
+
 //this GoogleId field dalne ka motive simple !!
 // apka : jabhi bhi wo same user : login kare to database 
 // me use naya user na samjh le !!
@@ -125,15 +144,53 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
  
 
-    app.get('/logout', function(req,res){
+app.get('/logout', function(req,res){
         res.clearCookie('connect.sid');
         res.redirect('/');
-    });
+});
 
+app.get("/submit",function(req,res){
+    if(req.isAuthenticated()){
+        res.render("submit");
+    }
+    else{
+        res.redirect("/");
+    }
+});
+
+app.post("/submit",function(req,res){
+    // res.json(req);
+    // console.log(req.user);
+    if(req.isAuthenticated()){
+        let secretTemp=new Secret({
+            content:req.body.secret,
+                user:req.user
+        })
+        secretTemp.save(function(err){
+            if(err){
+                console.log("Not able to add your secret !!");
+            }
+            else{
+                console.log("Added Secret Successfully !!");
+                res.redirect("/secrets");
+            }
+        });
+    }
+    else{
+        res.redirect("/");
+    }
+})
 
 app.get("/secrets",function(req,res){
     if(req.isAuthenticated()){
-        res.render("secrets");
+        Secret.find({},function(err,result){
+            if(err){
+                res.redirect("/");
+            }
+            else{
+                res.render("secrets",{secrets:result});
+            }
+        })
     }
     else{
         res.redirect("/register");
